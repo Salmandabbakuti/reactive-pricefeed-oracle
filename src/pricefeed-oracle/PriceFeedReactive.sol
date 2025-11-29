@@ -5,7 +5,7 @@ import "@reactive-lib/interfaces/IReactive.sol";
 import "@reactive-lib/interfaces/ISystemContract.sol";
 import "@reactive-lib/abstract-base/AbstractReactive.sol";
 
-contract ChainlinkPriceFeedReactive is IReactive, AbstractReactive {
+contract PriceFeedReactive is IReactive, AbstractReactive {
     // states for reactive logic
     uint64 private constant GAS_LIMIT = 1000000;
     uint256 private counter;
@@ -36,15 +36,15 @@ contract ChainlinkPriceFeedReactive is IReactive, AbstractReactive {
         address _origin,
         uint256 _destinationChainId,
         address _destination,
-        uint8 _decimals,
-        string memory _description,
-        uint256 _version
+        uint8 _feed_decimals,
+        string memory _feed_description,
+        uint256 _feed_version
     ) {
         destination = _destination;
         destinationChainId = _destinationChainId;
-        decimals = _decimals;
-        description = _description;
-        version = _version;
+        decimals = _feed_decimals;
+        description = _feed_description;
+        version = _feed_version;
         service = ISystemContract(payable(_service));
         if (!vm) {
             service.subscribe(

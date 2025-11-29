@@ -45,14 +45,14 @@ contract PriceFeedProxy is AbstractCallback {
 
     constructor(
         address _callback_sender,
-        uint8 _decimals,
-        string memory _description
+        uint8 _feed_decimals,
+        string memory _feed_description
     )
         AbstractCallback(_callback_sender) // Set desired callback address for secure bridging
     {
         owner = msg.sender;
-        decimals = _decimals;
-        description = _description;
+        decimals = _feed_decimals;
+        description = _feed_description;
     }
 
     /**
