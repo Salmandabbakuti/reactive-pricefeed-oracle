@@ -144,10 +144,39 @@ forge create --rpc-url $REACTIVE_RPC --private-key $PRIVATE_KEY src/pricefeed-or
 
 ### Test the Setup
 
+Query the latest price data from the `PriceFeedProxy` contract using `cast call`:
+
+```bash
+cast call $DESTINATION_ADDR "latestRoundData()(uint80,int256,uint256,uint256,uint80)" --rpc-url $DESTINATION_RPC
+```
+
+This will return the latest price feed data in the format:
+
+```
+roundId: uint80
+answer: int256 (price value)
+startedAt: uint256 (timestamp)
+updatedAt: uint256 (timestamp)
+answeredInRound: uint80
+```
+
+**To get a specific round's data:**
+
+```bash
+cast call $DESTINATION_ADDR "getRoundData(uint80)" <roundId> --rpc-url $DESTINATION_RPC
+```
+
+**To monitor price updates in real-time:**
+
+```bash
+# Watch for AnswerUpdated events on the proxy
+cast logs --address $DESTINATION_ADDR --rpc-url $DESTINATION_RPC --from-block 9738000
+```
+
 ### Deployed Contracts
 
-- **PriceFeedProxy(Destination) contract:** [0xb689ac1d2B794da8cABD34544083DC4921BCEF2C](https://sepolia.etherscan.io/address/0xb689ac1d2B794da8cABD34544083DC4921BCEF2C)
-- **PriceFeedReactive contract:** [0x6d21161d1D17cDCA58707829E4d57D5a4EfE5489](https://lasna.reactscan.net/address/0xc7203561ef179333005a9b81215092413ab86ae9/contract/0x6d21161d1D17cDCA58707829E4d57D5a4EfE5489)
+- **PriceFeedProxy(Destination) contract:** [0xE88E95259f000B5BaCF506ce673e2fc82e876e84](https://sepolia.etherscan.io/address/0xE88E95259f000B5BaCF506ce673e2fc82e876e84)
+- **PriceFeedReactive contract:** [0x30CdEDB7025256E2ca5F6351c41b1FF9C25E1366](https://lasna.reactscan.net/address/0xc7203561ef179333005a9b81215092413ab86ae9/contract/0x30CdEDB7025256E2ca5F6351c41b1FF9C25E1366)
 - **RVM:** [0xc7203561EF179333005a9b81215092413aB86aE9](https://lasna.reactscan.net/address/0xc7203561ef179333005a9b81215092413ab86ae9)
 
 #### Workflow Example

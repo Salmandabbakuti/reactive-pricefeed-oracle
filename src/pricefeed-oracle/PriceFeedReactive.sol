@@ -8,7 +8,6 @@ import {AbstractReactive} from "@reactive-lib/abstract-base/AbstractReactive.sol
 contract PriceFeedReactive is IReactive, AbstractReactive {
     // states for reactive logic
     uint64 private constant GAS_LIMIT = 1000000;
-    uint256 private counter;
 
     address immutable destination;
     uint256 immutable destinationChainId;
@@ -18,17 +17,6 @@ contract PriceFeedReactive is IReactive, AbstractReactive {
 
     uint256 private constant AGGREGATOR_ANSWER_UPDATED_TOPIC =
         uint256(keccak256("AnswerUpdated(int256,uint256,uint256)"));
-
-    event Event(
-        uint256 indexed chain_id,
-        address indexed _contract,
-        uint256 indexed topic_0,
-        uint256 topic_1,
-        uint256 topic_2,
-        uint256 topic_3,
-        bytes data,
-        uint256 counter
-    );
 
     constructor(
         address _service,
@@ -66,16 +54,6 @@ contract PriceFeedReactive is IReactive, AbstractReactive {
      * @param log Data structure containing the information about the intercepted log record.
      */
     function react(LogRecord calldata log) external vmOnly {
-        emit Event(
-            log.chain_id,
-            log._contract,
-            log.topic_0,
-            log.topic_1,
-            log.topic_2,
-            log.topic_3,
-            log.data,
-            ++counter
-        );
         if (log.topic_0 == AGGREGATOR_ANSWER_UPDATED_TOPIC) {
             // Decode the event data
             (int256 answer, uint256 updatedAt, uint256 roundId) = abi.decode(
