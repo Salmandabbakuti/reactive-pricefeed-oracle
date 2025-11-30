@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import "@reactive-lib/interfaces/IReactive.sol";
-import "@reactive-lib/interfaces/ISystemContract.sol";
-import "@reactive-lib/abstract-base/AbstractReactive.sol";
+import {IReactive} from "@reactive-lib/interfaces/IReactive.sol";
+import {ISystemContract} from "@reactive-lib/interfaces/ISystemContract.sol";
+import {AbstractReactive} from "@reactive-lib/abstract-base/AbstractReactive.sol";
 
 contract PriceFeedReactive is IReactive, AbstractReactive {
     // states for reactive logic

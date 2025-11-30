@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import "@reactive-lib/abstract-base/AbstractCallback.sol";
+import {AbstractCallback} from "@reactive-lib/abstract-base/AbstractCallback.sol";
 
 contract PriceFeedProxy is AbstractCallback {
     address owner;
@@ -55,9 +55,14 @@ contract PriceFeedProxy is AbstractCallback {
         description = _feed_description;
     }
 
+    modifier onlyOwner() {
+        require(msg.sender == owner, "No Permission!");
+        _;
+    }
+
     /**
      * @notice Updates the price feed with new data by the reactive contract
-     * @param sender The address of the sender (reactvm). Will always be the ReactVM address
+     * @param sender The address of the sender (reactvm). First arg will always be the ReactVM address
      * @param roundId The round ID
      * @param answer The latest answer (price)
      * @param updatedAt The timestamp when the round was updated
@@ -73,8 +78,7 @@ contract PriceFeedProxy is AbstractCallback {
         uint256 _version,
         uint256 startedAt,
         uint256 updatedAt
-    ) public authorizedSenderOnly {
-        require(sender == owner, "No Permission!"); // sender is the reactvm address(deployer)
+    ) public authorizedSenderOnly rvmIdOnly(sender) {
         require(roundId > latestRound.roundId, "Invalid roundId");
         require(answer > 0, "Invalid answer");
 
@@ -105,6 +109,16 @@ contract PriceFeedProxy is AbstractCallback {
             startedAt,
             updatedAt
         );
+    }
+
+    /**
+     * @notice Withdraws the contract balance to the owner
+     * @param _amount Amount to withdraw
+     */
+    function withdraw(uint256 _amount) external onlyOwner {
+        require(_amount <= address(this).balance, "Not enough balance");
+        (bool s, ) = owner.call{value: _amount}("");
+        require(s, "Withdraw failed!");
     }
 
     /**

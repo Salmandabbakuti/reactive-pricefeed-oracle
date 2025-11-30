@@ -10,6 +10,42 @@ Automatically mirror official Chainlink Price Feeds from an origin chain to a de
 2. **Reactive Contract**: Subscribe to events and encode cross-chain messages with feed data
 3. **Destination Chain**: Store price data in a minimal FeedProxy contract that exposes the standard AggregatorV3Interface for downstream applications
 
+### Architecture Diagram
+
+```mermaid
+graph TD
+    A["🔗 Chainlink Oracle<br/>(Mainnet)<br/>AnswerUpdated Event"]
+    B["⚡ PriceFeedReactive<br/>(Reactive Network)<br/>Decodes & Relays"]
+    C["🔗 PriceFeedProxy<br/>(Sepolia)<br/>Stores & Exposes"]
+    D["📱 DApps<br/>Read Price Data<br/>latestRoundData()"]
+
+    A -->|roundId, answer,<br/>updatedAt, etc| B
+    B -->|updateAnswer<br/>callback| C
+    C -->|AggregatorV3<br/>Interface| D
+```
+
+### Workflow Sequence
+
+```mermaid
+sequenceDiagram
+    participant Chainlink as Chainlink Oracle<br/>(Mainnet)
+    participant ReactVM as Reactive Network<br/>(ReactVM)
+    participant PriceFeed as PriceFeedReactive<br/>Contract
+    participant Proxy as PriceFeedProxy<br/>(Sepolia)
+    participant DApp as DApp Consumer
+
+    Chainlink->>Chainlink: Price Update
+    Chainlink->>ReactVM: AnswerUpdated Event
+    ReactVM->>PriceFeed: Trigger react() callback
+    PriceFeed->>PriceFeed: Decode event data
+    PriceFeed->>PriceFeed: Encode cross-chain message
+    PriceFeed->>Proxy: updateAnswer(roundId, answer,<br/>updatedAt, ...)
+    Proxy->>Proxy: Store round data
+    Proxy->>DApp: Price data available
+    DApp->>Proxy: latestRoundData()
+    Proxy-->>DApp: Return price (ETH/USD)
+```
+
 ## Contracts
 
 Core contracts can be found in the `src/pricefeed-oracle` directory:
@@ -95,7 +131,7 @@ forge create src/pricefeed-oracle/PriceFeedProxy.sol:PriceFeedProxy --rpc-url $D
 To ensure a successful callback, `PriceFeedProxy` contract must have an ETH balance. You can find more details [here](https://dev.reactive.network/economy#callback-payments). To fund the callback contracts, run the following command:
 
 ```bash
-cast send $DESTINATION_ADDR --rpc-url $DESTINATION_RPC --private-key $PRIVATE_KEY --value 0.5ether
+cast send $DESTINATION_ADDR --rpc-url $DESTINATION_RPC --private-key $PRIVATE_KEY --value 0.2ether
 ```
 
 ### Deploy Reactive Contract
@@ -110,15 +146,61 @@ forge create --rpc-url $REACTIVE_RPC --private-key $PRIVATE_KEY src/pricefeed-or
 
 ### Deployed Contracts
 
-- **PriceFeedProxy(Destination) contract:** [0x95358311803B5A7E159A42D7cAA80da770Fa8238](https://sepolia.etherscan.io/address/0x95358311803B5A7E159A42D7cAA80da770Fa8238)
-- **PriceFeedReactive contract:** [0xd231fE46b4A8500d4aDD5AD98EC3c4ca56E7dee4](https://lasna.reactscan.net/address/0xc7203561ef179333005a9b81215092413ab86ae9/contract/0xd231fe46b4a8500d4add5ad98ec3c4ca56e7dee4)
+- **PriceFeedProxy(Destination) contract:** [0xb689ac1d2B794da8cABD34544083DC4921BCEF2C](https://sepolia.etherscan.io/address/0xb689ac1d2B794da8cABD34544083DC4921BCEF2C)
+- **PriceFeedReactive contract:** [0x6d21161d1D17cDCA58707829E4d57D5a4EfE5489](https://lasna.reactscan.net/address/0xc7203561ef179333005a9b81215092413ab86ae9/contract/0x6d21161d1D17cDCA58707829E4d57D5a4EfE5489)
 - **RVM:** [0xc7203561EF179333005a9b81215092413aB86aE9](https://lasna.reactscan.net/address/0xc7203561ef179333005a9b81215092413ab86ae9)
 
-### Running the Demo
-
-### Demo
-
 #### Workflow Example
+
+The price feed oracle operates in a fully automated, event-driven workflow:
+
+**Step 1: Chainlink Price Update (Ethereum Mainnet)**
+
+- The Chainlink ETH/USD aggregator emits an `AnswerUpdated` event with new price data
+- Event contains: `roundId`, `answer` (price), `startedAt`, `updatedAt`, `answeredInRound`
+
+**Step 2: Reactive Contract Detects Event (Reactive Network)**
+
+- The `PriceFeedReactive` contract is subscribed to the `AnswerUpdated` event on the Chainlink aggregator
+- When an event is detected, the ReactVM triggers the contract's `react()` callback
+- The contract decodes the event data to extract: roundId, answer (int256), updatedAt, and other metadata
+
+**Step 3: Cross-Chain Message Encoded**
+
+- The reactive contract encodes a cross-chain message containing:
+  - `roundId` - Unique identifier for the price round
+  - `answer` - The price value (as int256, e.g., 260000000000 for $2600 USD)
+  - `updatedAt` - Timestamp of the price update
+  - `startedAt` - Timestamp when the round started
+  - `decimals` - Number of decimal places (e.g., 8 for $2,600.00000000)
+  - `description` - Feed description (e.g., "ETH / USD")
+
+**Step 4: Cross-Chain Callback Triggered**
+
+- The reactive contract emits a callback event targeting the `PriceFeedProxy` on Ethereum Sepolia
+- The message is relayed through the Reactive Network to the destination chain
+
+**Step 5: PriceFeedProxy Updates (Ethereum Sepolia)**
+
+- The `PriceFeedProxy` contract receives the callback and executes `updateAnswer()`
+- The new round data is stored:
+  - Latest round: stored in `latestRound` struct
+  - Historical data: stored in `rounds[roundId]` mapping
+  - An `AnswerUpdated` event is emitted on Sepolia
+
+**Step 6: DApps Consume Data**
+
+- Downstream applications on Sepolia can now call `latestRoundData()` on the proxy
+- Applications receive the mirrored price data in standard AggregatorV3Interface format
+- Price is available for lending protocols, DEXs, and other DeFi applications
+
+#### Example Transaction Flow
+
+1. **Origin Event**: Chainlink aggregator on Ethereum Mainnet: `AnswerUpdated(roundId: 123, answer: 260000000000, updatedAt: 1732828800)`
+2. **Reactive Detection**: PriceFeedReactive detects event and calls react callback
+3. **Message Encoding**: Encodes `updateAnswer(123, 260000000000, 1732828800, ...)`
+4. **Destination Update**: PriceFeedProxy on Sepolia stores the new round data
+5. **DApp Integration**: A lending protocol on Sepolia calls `latestRoundData()` and gets the ETH/USD price
 
 ## Built With
 
